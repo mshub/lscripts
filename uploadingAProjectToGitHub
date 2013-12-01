@@ -1,0 +1,6 @@
+git init
+git add *
+git commit -m "Messagge"
+git remote add origin https://github.com/mshub/lscripts.git
+git pull https://github.com/mshub/lscripts master
+git push -u origin master
