@@ -1,116 +1,41 @@
 #!/bin/bash
 
-JAVALOC="/usr/lib/jvm/java-6-sun/jre/bin/java"
-PLUGINDIR="/usr/lib/jvm/java-6-sun/jre/lib"
+export YELL_COLOR='\E[33m'        # Red BG
+export FINE_COLOR='\E[32m'        # Green BG
+export NORM_COLOR='\E[0m'         # Normalize BG
 
-checkEUID () {
-	if [[ $EUID -ne 0 ]]; then
-		printf "\nThe script needs to be run with root privileges e.g.\n\n    sudo $(basename $0)\n\n"
-		exit 1
-	fi
-}
 
-checkDistro () {
-	if [ -z "$(grep Ubuntu /etc/lsb-release)" ]; then
-		printf "\nThis script is designed for Ubuntu Linux! Exiting...\n\n"
-		exit 1
-	fi
-}
+echo -e "\n\n$YELL_COLOR Download repo file ... $NORM_COLOR"
+udo curl http://commondatastorage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
+sudo chmod 755 /usr/local/bin/repo
+sudo apt-get update
+sudo apt-get upgrade -y
 
-checkNetworking () {
-	if [ "$(ping -w 1 -c 1 nvdebmirror.nvidia.com 2>&1 | egrep -c "\<unknown\>|\<unreachable\>")" -ne 0 ]; then
-		printf "\nnvdebmirror.nvidia.com is unreachable.\nPlease check your network connection and run the script again.\n\n"
-		exit 1
-	fi
-}
-
-addRepo () {
-	if [ -z "$(grep nvdebmirror /etc/apt/sources.list)" ]; then
-		printf "\nAdding an internal NVIDIA repository for Java...\n"
-		wget -q http://nvdebmirror.nvidia.com/ubuntu/archive-key.asc -O- | apt-key add - > /dev/null
-		add-apt-repository "deb http://nvdebmirror.nvidia.com/ubuntu lucid main"
-	else
-		printf "\nAn internal NVIDIA repository for Java already exists. Skipping...\n"
-	fi
-}
-
-installJava () {
-		if [ ! -d /usr/share/doc/sun-java6-plugin ]; then
-		printf "Installing Java...\n"
-		printf "sun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true" | debconf-set-selections
-		apt-get update > /dev/null 2>&1
-		apt-get -y --force-yes install sun-java6-plugin > /dev/null
-	else
-		printf "Java already installed. Skipping...\n"
-	fi
-}
-
-install64BitSupport () {
-	if [ "$(uname -m)" = "x86_64" ]; then
-		if [ ! -d /etc/ia32-java-6-sun ]; then
-			printf "Installing 32 bit Java...\n"
-			apt-get -y --force-yes install ia32-sun-java6-bin > /dev/null 2>&1
-		else
-			printf "32 bit Java already installed. Skipping...\n"
-		fi
-
-		if [ -z "$(file $JAVALOC | grep Bourne-Again)" ]; then
-			printf "Patching Java for Juniper...\n"
-			cp $JAVALOC $JAVALOC.orig
-			printf '#!/bin/bash\n' > $JAVALOC
-			printf 'if [ "$3x" = "NCx" ]; then\n' >> $JAVALOC
-			printf '	/usr/lib/jvm/ia32-java-6-sun/jre/bin/java "$@"\n' >> $JAVALOC
-			printf "else\n" >> $JAVALOC
-			printf "	$JAVALOC.orig \"\$@\"\n" >> $JAVALOC
-			printf "fi\n" >> $JAVALOC
-			chmod 755 $JAVALOC $JAVALOC.orig
-		else
-			printf "Java already patched for Juniper. Skipping...\n"
-		fi
-	fi
-}
-
-setDefaultJava () {
-	update-alternatives --set java $JAVALOC > /dev/null
-	if [ "$(uname -m)" = "x86_64" ]; then
-		update-alternatives --set mozilla-javaplugin.so $PLUGINDIR/amd64/libnpjp2.so > /dev/null
-	else
-		update-alternatives --set mozilla-javaplugin.so $PLUGINDIR/i386/libnpjp2.so > /dev/null
-	fi
-}
-
-quit () {
-	printf "Done!\n\n"
-	exit 0
-}
-
-checkEUID
-checkDistro
-checkNetworking
-addRepo
-installJava
-install64BitSupport
-setDefaultJava
-
-echo -e "\nCustom tools installations will start now..."
-sleep 5
-
-echo -e "\nInstalling system based tools... "
-sudo apt-get install vnstat scrot cifs-utils openssh-server openssh-client gdisk dosfstools wget -y
-
-echo -e "\nInstalling Editors and plugins... "
+echo -e "\n\n$YELL_COLOR Installing Editors and plugins... $NORM_COLOR"
 sudo apt-get install vim -y
-#Cvim installation
-#cd /tmp/; sudo wget http://www.vim.org/scripts/download_script.php?src_id=9679 -O cvim; cd ~/.vim && unzip /tmp/cvim; cd /root/.vim/ && unzip /tmp/cvim;
-#echo "filetype plugin on" >> /etc/vim/vimrc
 
-echo -e "\nInstalling internet based tools... "
-sudo apt-get install curl axel html2text -y
+echo -e "\n\n$YELL_COLOR Installing internet based tools... $NORM_COLOR"
+sudo apt-get install curl axel html2text vnstat scrot bc -y
 
-echo -e "\nInstalling multimedia tools... "
-sudo apt-get install libav-tools -y
+echo -e "\n\n$YELL_COLOR Installing system based tools... $NORM_COLOR"
+sudo apt-get install dpkg-dev cifs-utils openssh-server openssh-client gdisk \
+        git synaptic p7zip-rar unetbootin nfs-common nfs-kernel-server -y
 
-echo -e "\nInstalling dev tools... "
-sudo apt-get install build-essential libncures5-dev lib32z1 lib32ncurses5 lib32bz2-1.0 lib32ncurses5 lib32stdc++6 -y
+echo -e "\n\n$YELL_COLOR Installing dev tools... $NORM_COLOR"
+sudo apt-get install libftdi-dev minicom build-essential \
+        python-software-properties android-tools-adb android-tools-fastboot \
+        libncurses5-dev lib32ncurses5 lib32z1 lib32stdc++6 ant bc bison \
+        build-essential curl flex g++-multilib gcc-multilib git-core gnupg gperf lbzip2 \
+        lib32ncurses5-dev libc6-dev libgl1-mesa-dev:i386 libncurses5-dev libreadline5:i386 \
+        libreadline6-dev:i386 libx11-dev:i386 libxml2-utils pigz python-markdown python-matplotlib \
+        python-numpy python-scipy tofrodos x11proto-core-dev xsltproc zip zlib1g-dev:i386 -y
 
-quit
+#echo -e "\n\n$YELL_COLOR Installing ARM compile support... $NORM_COLOR"
+#sudo apt-get install gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi gcc-arm-linux-gnueabihf -y
+
+echo -e "\n\n$YELL_COLOR Installing multimedia tools... $NORM_COLOR"
+sudo apt-get install libav-tools ubuntu-restricted-extras -y
+
+echo -e "\n\n$FINE_COLOR Installation completed successfully... $NORM_COLOR"
+echo "export PS1='\u@\W$ '" >> /root/.bashrc
+echo "export PS1='\u@\W$ '" >> $HOME/.bashrc
